@@ -1,35 +1,28 @@
-import os
-import socket
+import json
+import os,time
 import cloudscraper
 import requests
-from pystyle import Write, Colors
-from colorama import Fore, init
+import socket
+import subprocess
+from time import strftime
+from time import sleep
+from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 import time
+from colorama import Fore, init
 import sys
 
-# Khởi tạo colorama
-init(autoreset=True)
-
-# Tạo scraper
-scraper = cloudscraper.create_scraper()
-
-# Hàm kiểm tra mạng
 def kiem_tra_mang():
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=3)
     except OSError:
-        print(f"{Fore.RED}Mạng không ổn định hoặc bị mất kết nối. Vui lòng kiểm tra lại mạng.")
-        exit()
+        print("Mạng không ổn định hoặc bị mất kết nối. Vui lòng kiểm tra lại mạng.")
 
 kiem_tra_mang()
+scraper = cloudscraper.create_scraper()
 
-# Xóa màn hình
-os.system('cls' if os.name == 'nt' else 'clear')
+from colorama import Fore
 
-# Màu tuỳ chọn
-hong = Colors.purple
-
-# Hiển thị banner
 banner = f"""
 {Fore.YELLOW}╔════════════════════════════════════════════════════════╗
 {Fore.YELLOW}║                                                        ║
@@ -42,12 +35,15 @@ banner = f"""
 {Fore.YELLOW}║                                                        ║
 {Fore.YELLOW}╚════════════════════════════════════════════════════════╝
 {Fore.WHITE}════════════════════════════════════════════════════════════
-{Fore.WHITE}Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_TIKTOK_║ ADMIN: \033[38;2;0;220;255mVILÂM
+{Fore.RED}{Fore.WHITE}Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_shapchat_║ ADMIN: \033[38;2;0;220;255mVILÂM
 {Fore.WHITE}════════════════════════════════════════════════════════════
 [{Fore.RED}⚡{Fore.WHITE}] Zalo: \033[38;2;0;220;255m0368782618
-[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: \033[38;2;0;220;255mNếu gặp lỗi, gọi ADMIN hỗ trợ!
+[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: \033[38;2;0;220;255mAE dùng tool bị lỗi thì gọi ADMIN để sửa
 {Fore.WHITE}════════════════════════════════════════════════════════════
 """
+
+os.system('cls' if os.name== 'nt' else 'clear')
+print(banner)
 os.system('cls' if os.name== 'nt' else 'clear')
 banner()
 sleep(1.2)
@@ -63,19 +59,24 @@ t = open("token.txt","r")
 author = Authorization.read()
 token = t.read()
 if author == "":
-  author = input(Colorate.Diagonal(Colors.red_to_green,"NHẬP AUTHORIZATION GOLIKE : "))
-  token = input(Colorate.Diagonal(Colors.green_to_red,"NHẬP T (Token): "))
+  author = input(Colorate.Diagonal(Colors.red_to_green," 💸 NHẬP AUTHORIZATION GOLIKE : \033[1;33m"))
+  token = input(Colorate.Diagonal(Colors.green_to_red,"💸  NHẬP TOKEN (T CỦA GOLIKE): \033[1;33m"))
   Authorization = open("Authorization.txt","w")
   t = open("token.txt","w")
   Authorization.write(author)
   t.write(token)
 else:
-  print(Colorate.Diagonal(Colors.white_to_black, "=================================================="))
-  print(Colorate.Diagonal(Colors.red_to_white, "Nhập [1] Để Vào Tool SnapChat "))
-  print(Colorate.Diagonal(Colors.red_to_white, "Nhập [2] Để Thay Auth Golike Mới "))
-  print(Colorate.Diagonal(Colors.white_to_black,"=================================================="))
-  
-  select = input(f"\033[1;32mNhập số : ")
+  console = Console()
+  menu_text = Text()
+  menu_text.append("╔═══════════════════════════════════════╗\n", style="bold red")
+  menu_text.append("║      [1] Vào Tool GoLike              ║\n", style="bold white")
+  menu_text.append("║      [2] Nhập Auth Golike Mới         ║\n", style="bold white")
+  menu_text.append("╚═══════════════════════════════════════╝", style="bold red")
+
+  console.print(Panel(menu_text, title="? MENU GOLIKE", border_style="bright_red"))
+
+  select = console.input("[bold yellow]? Nhập lựa chọn [1/2]: [bold green]").strip()
+
   kiem_tra_mang()
   if select != "1":
     author = select
@@ -96,8 +97,6 @@ Authorization.close()
 t.close()
 os.system('cls' if os.name== 'nt' else 'clear')
 banner()
-print("\033[1;32mDanh Sách Acc Snap Hiện Có ")
-print("\033[97m==================================")
 headers = {
     'Accept': 'application/json, text/plain, */*',
     'Content-Type': 'application/json;charset=utf-8',
@@ -185,70 +184,103 @@ def baoloi(ads_id, object_id, account_id, loai):
     except Exception:
       sys.exit()
 
-# Gọi chọn tài khoản một lần và xử lý lỗi nếu có
+console = Console()
 chontktiktok = chonacc()
-
 def dsacc():
-  if chontktiktok.get("status") != 200:  
-    print("\033[1;31mAuthorization hoăc T sai ")
-    quit()
-  for i in range(len(chontktiktok["data"])):
-    print(Colorate.Diagonal(Colors.green_to_red,f"[{i+1}] {chontktiktok["data"][i]["name"]} |    Online"))
-dsacc() 
-print("\033[97m==================================")
-while True:
-  try:
-    luachon = int(input("\033[1;32mChọn tài khoản: \033[1;33m"))
-    while luachon > len((chontktiktok)["data"]):
-      luachon = int(input("\033[1;31mAcc Này Không Có Trong Danh Sách Cấu Hình , Nhập Lại : \033[1;33m"))
-    account_id = chontktiktok["data"][luachon - 1]["id"]
-    break  
-  except:
-    print("\033[1;31m Sai Định Dạng ") 
-while True:
-  try:
-    os.system('cls' if os.name== 'nt' else 'clear')
-    banner()
-    delay = int(input(f"\033[1;32mDelay thực hiện job : \033[1;33m"))
-    break
-  except:
-    print("\033[1;31m Sai Định Dạng ")
-# Nhập proxy
-proxy_input = input("\033[1;32mNhập proxy (host:port hoặc user:pass@host:port), Enter nếu không dùng đến : \033[0m").strip()
-proxies = {
-    "http": f"http://{proxy_input}",
-    "https": f"http://{proxy_input}"
-} if proxy_input else None
-    
-print("\033[1;33mCHỌN JOB ĐỂ LÀM KIẾM TIỀN")
-print("")
-print("\033[1;36mNhập \033[1;39m[\033[1;36m1\033[1;39m] Thực Hiện NV \033[1;33mFollow ➕ ")
+    if chontktiktok.get("status") != 200:
+        console.print(Panel("[red]❌ Authorization hoặc Token sai![/red]\n[bold yellow]Vui lòng kiểm tra lại file Auth.txt & token.txt[/bold yellow]", title="Lỗi xác thực", border_style="red"))
+        sys.exit(1)
 
+    table = Table(title="📱 DANH SÁCH ACC", box=box.ROUNDED, border_style="bold green")
+    table.add_column("STT", justify="center", style="bold cyan")
+    table.add_column("Tên Tài Khoản", style="bold magenta")
+    table.add_column("Trạng thái", style="bold green")
+
+    for i, acc in enumerate(chontktiktok["data"], start=1):
+        nickname = acc.get("name", acc.get("name", "Không tên"))
+        status = "Online" if acc.get("status") == 1 else None  
+        table.add_row(str(i), nickname, status)
+
+    console.print(table)
+
+# Hiển thị danh sách acc
+dsacc()
+
+# Nhập lựa chọn acc
 while True:
     try:
-        loai_nhiem_vu = int(input("\033[1;32mChọn loại nv cần kiếm tiền : \033[1;33m "))
-        if loai_nhiem_vu in [1]:
+        luachon = int(input("\033[1;31mChọn tài khoản : \033[1;33m"))
+        if 1 <= luachon <= len(chontktiktok["data"]):
+            account = chontktiktok["data"][luachon - 1]
+            account_id = account["id"]
+            account_nickname = account.get("nickname", account.get("name", "Không tên"))
+            break
+        console.print("[red]⚠️ Acc không có trong danh sách. Nhập lại![/red]")
+    except Exception as e:
+        console.print(f"[red]❌ Sai định dạng! {str(e)}[red]")
+
+console.print(f"[yellow]Delay đã dc setup!")
+# Hiển thị loại nhiệm vụ
+nhiem_vu_panel = Panel.fit(
+    "[bold cyan]🔰 CHỌN LOẠI NHIỆM VỤ[/bold cyan]\n"
+    "[bold green][1][/bold green] Thực hiện NV Follow ➕",
+    title="🎯 Menu Nhiệm Vụ", border_style="bright_blue"
+)
+console.print(nhiem_vu_panel)
+while True:
+    try:
+        loai_nhiem_vu = IntPrompt.ask("[bold yellow]🍉 Chọn loại nhiệm vụ cần kiếm tiền", default=1)
+        if loai_nhiem_vu == 1:
             break
         else:
-            print("\033[1;31mVui lòng chọn số từ 1")
+            console.print("[red]⚠️ Hiện tại chỉ có nhiệm vụ [1] Follow![red]")
     except:
-        print("\033[1;31mSai định dạng! Vui lòng nhập số.")  
+        console.print("[red]❌ Sai định dạng! Vui lòng nhập số.[/red]")
+
   
 # Thêm phần chọn loại nhiệm vụ sau khi chọn tài khoản và trước khi bắt đầu làm nhiệm vụ
-   
+
+
 dem = 0
 tong = 0
+max_retries = 3
+retry_count = 0
+nhanjob = None
 dsaccloi = []
 accloi = ""
 os.system('cls' if os.name== 'nt' else 'clear')
 
 banner()
 print("")
+
+console = Console()
+
+def nhan_tien_progress(account_id, ads_id, object_id, job_type):
+    console.print("[bold cyan]💸 Đang tiến hành nhận xu từ GoLike...[/bold cyan]\n")
+
+    with Progress(
+        SpinnerColumn(style="bold yellow"),
+        TextColumn("[progress.description]{task.description}", style="bold white"),
+        BarColumn(bar_width=40, complete_style="green"),
+        TimeElapsedColumn(),
+        transient=True
+    ) as progress:
+        task = progress.add_task("🪙 Đang nhận xu", total=100)
+        for _ in range(100):
+            progress.update(task, advance=1)
+            time.sleep(0.015)
+
+    console.print("[bold green]✅ Nhận xu thành công![/bold green]\n")
+
+
+dem = 0
+tong = 0
+console = Console()
+
 while True:
-    
-    print('\033[1;35m ĐANG GET JOB  ', end="\r")
-    max_retries = 3
+    # Tìm job
     retry_count = 0
+    max_retries = 4
     nhanjob = None
 
     while retry_count < max_retries:
@@ -256,93 +288,93 @@ while True:
             nhanjob = nhannv(account_id)
             if nhanjob and nhanjob.get("status") == 200 and nhanjob["data"].get("link") and nhanjob["data"].get("object_id"):
                 break
-            else:
-                retry_count += 1
-                time.sleep(2)
-        except Exception as e:
-            retry_count += 1
-            time.sleep(1)
+        except:
+            pass
+        retry_count += 1
+        time.sleep(1.5)
 
+    # Không lấy được job
     if not nhanjob or retry_count >= max_retries:
+        console.print("[red]❌ Không lấy được job, thử lại...[/red]")
+        time.sleep(2)
         continue
 
+    # Lấy thông tin job
     ads_id = nhanjob["data"]["id"]
     link = nhanjob["data"]["link"]
     object_id = nhanjob["data"]["object_id"]
     job_type = nhanjob["data"]["type"]
-# Kiểm tra loại nhiệm vụ
+
+    # Kiểm tra loại job có đúng yêu cầu không
     if (loai_nhiem_vu == 1 and job_type != "follow") or \
        (loai_nhiem_vu == 2 and job_type != "like") or \
        (job_type not in ["follow", "like"]):
         baoloi(ads_id, object_id, account_id, job_type)
         continue
-    # Đếm ngược delay
-    for remaining_time in range(delay, -1, -1):
-        color = "\033[1;35m" if remaining_time % 2 == 0 else "\033[1;36m"
-        print(f"\r{color} Vương Văn Hoàng [{remaining_time}s]   ", end="")
-        time.sleep(1)
-    print("\r                          \r", end="") 
-    color = "\033[1;35m" if remaining_time % 2 == 0 else "\033[1;33m"
-    print(f"{color} Đang Nhận Tiền Lần 1 ... ",end = "\r")
-    # Hoàn thành job
-    max_attempts = 2
-    attempts = 0
+
+    # Mở link job (nếu cần: webbrowser.open(link) hoặc ADB)
+
+    # Countdown
+    def countdown(delay):
+        spinner = ["|", "/", "-", "\\"]
+        with Live(refresh_per_second=10) as live:
+            for i in range(delay, -1, -1):
+                color = "bold magenta" if i % 2 == 0 else "bold green"
+                spin = spinner[i % len(spinner)]
+                text = Text(f"⏳ {spin} Delay chống block | {i}s", style=color)
+                panel = Panel(text, title="Đếm ngược", border_style=color)
+                live.update(panel)
+                sleep(1)
+            live.update(Panel(Text("🚀 Bắt đầu!", style="bold bright_green"), title="Xong!", border_style="bold white"))
+
+    countdown(random.randint(10, 20))  # Random delay chống block
+
+    # Gửi xác nhận hoàn thành job
     nhantien = None
-    while attempts < max_attempts:
+    for attempt in range(2):
         try:
             nhantien = hoanthanh(ads_id, account_id)
             if nhantien and nhantien.get("status") == 200:
                 break
         except:
-            pass  
-        attempts += 1
+            pass
+        time.sleep(1)
 
     if nhantien and nhantien.get("status") == 200:
-        dem += 1
-        tien = nhantien["data"]["prices"]
-        tong += tien
-        local_time = time.localtime()
-        hour = local_time.tm_hour
-        minute = local_time.tm_min
-        second = local_time.tm_sec
-        h = hour
-        m = minute
-        s = second
-        if hour < 10:
-            h = "0" + str(hour)
-        if minute < 10:
-            m = "0" + str(minute)
-        if second < 10:
-            s = "0" + str(second)
-                                      
-        thoigian = time.strftime("%H:%M:%S", time.localtime())
-        console = Console()                             
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("STT", style="bold yellow")
-        table.add_column("Thời gian", style="cyan")
-        table.add_column("Status", style="green")
-        table.add_column("Tiền ", style="bold green")
-        table.add_column("Tổng Tiền", style="bold white")
-        table.add_row(
-        str(dem),
-        thoigian,
-        "[green]SUCCESS[/green]",
-        f"[bold green]+{tien}đ",
-        f"[bold yellow]{tong} vnđ"
-    )
+        # Hiệu ứng nhận xu
+        def nhan_tien_progress():
+            with Progress(
+                SpinnerColumn(style="bold yellow"),
+                TextColumn("[progress.description]{task.description}", style="bold white"),
+                BarColumn(bar_width=40, complete_style="green"),
+                TimeElapsedColumn(),
+                transient=True
+            ) as progress:
+                task = progress.add_task("🪙 Đang nhận xu", total=100)
+                for _ in range(100):
+                    progress.update(task, advance=1)
+                    time.sleep(0.015)
+        nhan_tien_progress()
 
+        # In bảng kết quả
+        dem += 1
+        tien = nhantien["data"].get("prices", 0)
+        tong += tien
+        thoigian = time.strftime("%H:%M:%S", time.localtime())
         os.system('cls' if os.name == 'nt' else 'clear')
         banner()
-        console.print(table)
-        time.sleep(0.7)
-        checkdoiacc = 0
-    else:
-        try:
-            baoloi(ads_id, object_id, account_id, nhanjob["data"]["type"])
-            print("\033[1;35m Bỏ qua job lỗi thành công ", end="\r")
-            sleep(1.5)
-            checkdoiacc += 1
-        except:
-            pass
 
+        tb = Table(title=f"[bold green]🍉 JOB #{dem} HOÀN THÀNH", show_header=True, header_style="bold cyan", box=box.ROUNDED)
+        tb.add_column("STT", justify="center", style="bold yellow")
+        tb.add_column("⏰ Thời gian", justify="center", style="cyan")
+        tb.add_column("📌 Trạng thái", justify="center", style="green")
+        tb.add_column("💵 Xu nhận", justify="center", style="bold green")
+        tb.add_column("💰 Tổng xu", justify="center", style="bold white")
+        tb.add_row(str(dem), thoigian, "[green]SUCCESS[/green]", f"+{tien} đ", f"{tong:,} đ")
+        console.print(tb)
+        sleep(1)
+    else:
+        baoloi(ads_id, object_id, account_id, job_type)
+        console.print("[red]❌ Job lỗi, đã báo lỗi và bỏ qua[/red]")
+        sleep(1)
 
