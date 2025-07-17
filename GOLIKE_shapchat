@@ -1,27 +1,29 @@
-import json
-import os,time
+import os, sys, time, random, json, socket
 import cloudscraper
 import requests
-import socket
-import subprocess
-from time import strftime
 from time import sleep
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-import time
 from colorama import Fore, init
-import sys
+from rich.console import Console
+from rich.prompt import IntPrompt
+from rich.live import Live
+from rich.text import Text
+from rich.panel import Panel
+from rich.table import Table
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich import box
+
+init(autoreset=True)
+console = Console()
 
 def kiem_tra_mang():
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=3)
     except OSError:
-        print("Mạng không ổn định hoặc bị mất kết nối. Vui lòng kiểm tra lại mạng.")
+        console.print("[red]❌ Mạng không ổn định hoặc mất kết nối![/red]")
+        sys.exit(1)
 
 kiem_tra_mang()
 scraper = cloudscraper.create_scraper()
-
-from colorama import Fore
 
 banner = f"""
 {Fore.YELLOW}╔════════════════════════════════════════════════════════╗
@@ -35,346 +37,180 @@ banner = f"""
 {Fore.YELLOW}║                                                        ║
 {Fore.YELLOW}╚════════════════════════════════════════════════════════╝
 {Fore.WHITE}════════════════════════════════════════════════════════════
-{Fore.RED}{Fore.WHITE}Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_shapchat_║ ADMIN: \033[38;2;0;220;255mVILÂM
+{Fore.WHITE}Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_SNAPCHAT_║ ADMIN: \033[38;2;0;220;255mVILÂM
 {Fore.WHITE}════════════════════════════════════════════════════════════
 [{Fore.RED}⚡{Fore.WHITE}] Zalo: \033[38;2;0;220;255m0368782618
-[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: \033[38;2;0;220;255mAE dùng tool bị lỗi thì gọi ADMIN để sửa
+[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: AE dùng tool bị lỗi thì gọi ADMIN để sửa
 {Fore.WHITE}════════════════════════════════════════════════════════════
 """
 
-os.system('cls' if os.name== 'nt' else 'clear')
+os.system('cls' if os.name == 'nt' else 'clear')
 print(banner)
-os.system('cls' if os.name== 'nt' else 'clear')
-banner()
-sleep(1.2)
+sleep(1)
 
-    # Nhập auth golike
-try:
-  Authorization = open("Authorization.txt","x")
-  t = open("token.txt","x")
-except:
-  pass
-Authorization = open("Authorization.txt","r")
-t = open("token.txt","r")
-author = Authorization.read()
-token = t.read()
-if author == "":
-  author = input(Colorate.Diagonal(Colors.red_to_green," 💸 NHẬP AUTHORIZATION GOLIKE : \033[1;33m"))
-  token = input(Colorate.Diagonal(Colors.green_to_red,"💸  NHẬP TOKEN (T CỦA GOLIKE): \033[1;33m"))
-  Authorization = open("Authorization.txt","w")
-  t = open("token.txt","w")
-  Authorization.write(author)
-  t.write(token)
-else:
-  console = Console()
-  menu_text = Text()
-  menu_text.append("╔═══════════════════════════════════════╗\n", style="bold red")
-  menu_text.append("║      [1] Vào Tool GoLike              ║\n", style="bold white")
-  menu_text.append("║      [2] Nhập Auth Golike Mới         ║\n", style="bold white")
-  menu_text.append("╚═══════════════════════════════════════╝", style="bold red")
+# === Load Authorization & Token ===
+def load_auth():
+    try:
+        with open("Authorization.txt", "r") as f:
+            auth = f.read().strip()
+        with open("token.txt", "r") as f:
+            token = f.read().strip()
+        if not auth or not token:
+            raise FileNotFoundError
+        return auth, token
+    except:
+        auth = input("💸 Nhập AUTHORIZATION GOLIKE: ")
+        token = input("💸 Nhập TOKEN (T của GoLike): ")
+        with open("Authorization.txt", "w") as f:
+            f.write(auth)
+        with open("token.txt", "w") as f:
+            f.write(token)
+        return auth, token
 
-  console.print(Panel(menu_text, title="? MENU GOLIKE", border_style="bright_red"))
+author, token = load_auth()
 
-  select = console.input("[bold yellow]? Nhập lựa chọn [1/2]: [bold green]").strip()
-
-  kiem_tra_mang()
-  if select != "1":
-    author = select
-  if select == "2":
-    for i in range(1, 101):
-     sys.stdout.write(f"\r{BOLD}{AQUA} ĐANG TIẾN HÀNH XÓA AUTH CŨ : [{i}% {'║' * (i // 2)}]{RESET}")
-     sys.stdout.flush()
-     sleep(0.03)  # Điều chỉnh thời gian chờ nếu cần
-    os.system('cls' if os.name== 'nt' else 'clear')
-    print(banner)
-    author = input("\033[1;33mNhập Auth Golike Mới : ")
-    token = input("\033[1;32mNhập T Golike Mới : \033[1;33m")
-    Authorization = open("Authorization.txt","w")
-    t = open("token.txt","w")
-    Authorization.write(author)
-    t.write(token)
-Authorization.close()
-t.close()
-os.system('cls' if os.name== 'nt' else 'clear')
-banner()
 headers = {
     'Accept': 'application/json, text/plain, */*',
     'Content-Type': 'application/json;charset=utf-8',
     'Authorization': author,
     't': token,
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K)',
     'Referer': 'https://app.golike.net/account/manager/snapchat',
 }
 
-scraper = cloudscraper.create_scraper()
 def chonacc():
-    json_data = {}
     try:
-      response = scraper.get(
-        'https://gateway.golike.net/api/snapchat-account',
-    
-        headers=headers,
-        json=json_data
-     ).json()
-      return response
-    except Exception:
-      sys.exit()
+        res = scraper.get('https://gateway.golike.net/api/snapchat-account', headers=headers).json()
+        return res
+    except:
+        sys.exit()
 
 def nhannv(account_id):
     try:
-        params = {
-            'account_id': account_id,
-            'data': 'null',
-        }
-   
-        response = scraper.get(
-            'https://gateway.golike.net/api/advertising/publishers/snapchat/jobs',
-            headers=headers,
-            params=params,
-            json={}
-        )
-        return response.json()
-    except Exception:
-      sys.exit()
+        params = {'account_id': account_id, 'data': 'null'}
+        res = scraper.get('https://gateway.golike.net/api/advertising/publishers/snapchat/jobs', headers=headers, params=params)
+        return res.json()
+    except:
+        sys.exit()
 
 def hoanthanh(ads_id, account_id):
     try:
-        json_data = {
-            'ads_id': ads_id,
-            'account_id': account_id,
-            'async': True,
-            'data': None,
-        }
-
-        response = scraper.post(
-            'https://gateway.golike.net/api/advertising/publishers/snapchat/complete-jobs',
-            headers=headers,
-            json=json_data,
-            timeout=6
-        )
-        return response.json()
-    except Exception:
-      sys.exit()
+        data = {'ads_id': ads_id, 'account_id': account_id, 'async': True, 'data': None}
+        res = scraper.post('https://gateway.golike.net/api/advertising/publishers/snapchat/complete-jobs', headers=headers, json=data, timeout=6)
+        return res.json()
+    except:
+        sys.exit()
 
 def baoloi(ads_id, object_id, account_id, loai):
     try:
-        json_data1 = {
+        scraper.post('https://gateway.golike.net/api/report/send', headers=headers, json={
             'description': 'Tôi đã làm Job này rồi',
             'users_advertising_id': ads_id,
             'type': 'ads',
-            'provider': 'tiktok',
+            'provider': 'snapchat',
             'fb_id': account_id,
             'error_type': 6,
-        }
-
-        scraper.post('https://gateway.golike.net/api/report/send', headers=headers, json=json_data1)
-
-        json_data2 = {
+        })
+        scraper.post('https://gateway.golike.net/api/advertising/publishers/snapchat/skip-jobs', headers=headers, json={
             'ads_id': ads_id,
             'object_id': object_id,
             'account_id': account_id,
             'type': loai,
-        }
-
-        scraper.post(
-            'https://gateway.golike.net/api/advertising/publishers/snapchat/skip-jobs',
-            headers=headers,
-            json=json_data2,
-        )
-    except Exception:
-      sys.exit()
-
-console = Console()
-chontktiktok = chonacc()
-def dsacc():
-    if chontktiktok.get("status") != 200:
-        console.print(Panel("[red]❌ Authorization hoặc Token sai![/red]\n[bold yellow]Vui lòng kiểm tra lại file Auth.txt & token.txt[/bold yellow]", title="Lỗi xác thực", border_style="red"))
-        sys.exit(1)
-
-    table = Table(title="📱 DANH SÁCH ACC", box=box.ROUNDED, border_style="bold green")
-    table.add_column("STT", justify="center", style="bold cyan")
-    table.add_column("Tên Tài Khoản", style="bold magenta")
-    table.add_column("Trạng thái", style="bold green")
-
-    for i, acc in enumerate(chontktiktok["data"], start=1):
-        nickname = acc.get("name", acc.get("name", "Không tên"))
-        status = "Online" if acc.get("status") == 1 else None  
-        table.add_row(str(i), nickname, status)
-
-    console.print(table)
-
-# Hiển thị danh sách acc
-dsacc()
-
-# Nhập lựa chọn acc
-while True:
-    try:
-        luachon = int(input("\033[1;31mChọn tài khoản : \033[1;33m"))
-        if 1 <= luachon <= len(chontktiktok["data"]):
-            account = chontktiktok["data"][luachon - 1]
-            account_id = account["id"]
-            account_nickname = account.get("nickname", account.get("name", "Không tên"))
-            break
-        console.print("[red]⚠️ Acc không có trong danh sách. Nhập lại![/red]")
-    except Exception as e:
-        console.print(f"[red]❌ Sai định dạng! {str(e)}[red]")
-
-console.print(f"[yellow]Delay đã dc setup!")
-# Hiển thị loại nhiệm vụ
-nhiem_vu_panel = Panel.fit(
-    "[bold cyan]🔰 CHỌN LOẠI NHIỆM VỤ[/bold cyan]\n"
-    "[bold green][1][/bold green] Thực hiện NV Follow ➕",
-    title="🎯 Menu Nhiệm Vụ", border_style="bright_blue"
-)
-console.print(nhiem_vu_panel)
-while True:
-    try:
-        loai_nhiem_vu = IntPrompt.ask("[bold yellow]🍉 Chọn loại nhiệm vụ cần kiếm tiền", default=1)
-        if loai_nhiem_vu == 1:
-            break
-        else:
-            console.print("[red]⚠️ Hiện tại chỉ có nhiệm vụ [1] Follow![red]")
+        })
     except:
-        console.print("[red]❌ Sai định dạng! Vui lòng nhập số.[/red]")
+        sys.exit()
 
-  
-# Thêm phần chọn loại nhiệm vụ sau khi chọn tài khoản và trước khi bắt đầu làm nhiệm vụ
+# === Hiển thị danh sách acc ===
+response = chonacc()
+if response.get("status") != 200:
+    console.print("[red]❌ Auth hoặc Token sai! Kiểm tra file.[/red]")
+    sys.exit(1)
 
+accounts = response["data"]
+table = Table(title="📱 DANH SÁCH ACC", box=box.ROUNDED)
+table.add_column("STT", style="cyan", justify="center")
+table.add_column("Tên Tài Khoản", style="magenta")
+table.add_column("Trạng Thái", style="green")
 
-dem = 0
-tong = 0
-max_retries = 3
-retry_count = 0
-nhanjob = None
-dsaccloi = []
-accloi = ""
-os.system('cls' if os.name== 'nt' else 'clear')
+for i, acc in enumerate(accounts, 1):
+    table.add_row(str(i), acc.get("name", "Không tên"), "Online" if acc.get("status") == 1 else "Offline")
 
-banner()
-print("")
+console.print(table)
 
-console = Console()
+# === Chọn acc ===
+while True:
+    try:
+        chon = int(input("👉 Chọn tài khoản: "))
+        if 1 <= chon <= len(accounts):
+            acc = accounts[chon - 1]
+            account_id = acc["id"]
+            break
+    except:
+        console.print("[red]⚠️ Nhập sai, thử lại![/red]")
 
-def nhan_tien_progress(account_id, ads_id, object_id, job_type):
-    console.print("[bold cyan]💸 Đang tiến hành nhận xu từ GoLike...[/bold cyan]\n")
-
-    with Progress(
-        SpinnerColumn(style="bold yellow"),
-        TextColumn("[progress.description]{task.description}", style="bold white"),
-        BarColumn(bar_width=40, complete_style="green"),
-        TimeElapsedColumn(),
-        transient=True
-    ) as progress:
-        task = progress.add_task("🪙 Đang nhận xu", total=100)
-        for _ in range(100):
-            progress.update(task, advance=1)
-            time.sleep(0.015)
-
-    console.print("[bold green]✅ Nhận xu thành công![/bold green]\n")
-
-
-dem = 0
-tong = 0
-console = Console()
+# === Chọn nhiệm vụ ===
+nv_panel = Panel("[1] Nhiệm vụ Follow", title="🎯 Nhiệm vụ", border_style="bright_blue")
+console.print(nv_panel)
 
 while True:
-    # Tìm job
-    retry_count = 0
-    max_retries = 4
-    nhanjob = None
+    try:
+        loai_nv = IntPrompt.ask("🔰 Chọn loại nhiệm vụ", default=1)
+        if loai_nv == 1:
+            break
+    except:
+        console.print("[red]❌ Nhập sai![/red]")
 
-    while retry_count < max_retries:
-        try:
-            nhanjob = nhannv(account_id)
-            if nhanjob and nhanjob.get("status") == 200 and nhanjob["data"].get("link") and nhanjob["data"].get("object_id"):
-                break
-        except:
-            pass
-        retry_count += 1
-        time.sleep(1.5)
+# === Nhận job và làm job ===
+dem = tong = 0
 
-    # Không lấy được job
-    if not nhanjob or retry_count >= max_retries:
-        console.print("[red]❌ Không lấy được job, thử lại...[/red]")
+def countdown(delay):
+    spinner = ["|", "/", "-", "\\"]
+    with Live(refresh_per_second=10) as live:
+        for i in range(delay, -1, -1):
+            spin = spinner[i % len(spinner)]
+            panel = Panel(Text(f"⏳ {spin} Delay chống block | {i}s", style="bold green"), title="Đếm ngược")
+            live.update(panel)
+            sleep(1)
+
+def nhan_tien_progress():
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), TimeElapsedColumn(), transient=True) as p:
+        t = p.add_task("🪙 Nhận xu", total=100)
+        for _ in range(100):
+            p.update(t, advance=1)
+            time.sleep(0.01)
+
+while True:
+    job = nhannv(account_id)
+    if job.get("status") != 200 or not job["data"].get("link"):
+        console.print("[red]❌ Không có job. Đợi thêm...[/red]")
         time.sleep(2)
         continue
 
-    # Lấy thông tin job
-    ads_id = nhanjob["data"]["id"]
-    link = nhanjob["data"]["link"]
-    object_id = nhanjob["data"]["object_id"]
-    job_type = nhanjob["data"]["type"]
+    ads_id = job["data"]["id"]
+    object_id = job["data"]["object_id"]
+    job_type = job["data"]["type"]
 
-    # Kiểm tra loại job có đúng yêu cầu không
-    if (loai_nhiem_vu == 1 and job_type != "follow") or \
-       (loai_nhiem_vu == 2 and job_type != "like") or \
-       (job_type not in ["follow", "like"]):
+    if job_type != "follow":
         baoloi(ads_id, object_id, account_id, job_type)
         continue
 
-    # Mở link job (nếu cần: webbrowser.open(link) hoặc ADB)
+    countdown(random.randint(10, 20))
 
-    # Countdown
-    def countdown(delay):
-        spinner = ["|", "/", "-", "\\"]
-        with Live(refresh_per_second=10) as live:
-            for i in range(delay, -1, -1):
-                color = "bold magenta" if i % 2 == 0 else "bold green"
-                spin = spinner[i % len(spinner)]
-                text = Text(f"⏳ {spin} Delay chống block | {i}s", style=color)
-                panel = Panel(text, title="Đếm ngược", border_style=color)
-                live.update(panel)
-                sleep(1)
-            live.update(Panel(Text("🚀 Bắt đầu!", style="bold bright_green"), title="Xong!", border_style="bold white"))
-
-    countdown(random.randint(10, 20))  # Random delay chống block
-
-    # Gửi xác nhận hoàn thành job
-    nhantien = None
-    for attempt in range(2):
-        try:
-            nhantien = hoanthanh(ads_id, account_id)
-            if nhantien and nhantien.get("status") == 200:
-                break
-        except:
-            pass
-        time.sleep(1)
-
-    if nhantien and nhantien.get("status") == 200:
-        # Hiệu ứng nhận xu
-        def nhan_tien_progress():
-            with Progress(
-                SpinnerColumn(style="bold yellow"),
-                TextColumn("[progress.description]{task.description}", style="bold white"),
-                BarColumn(bar_width=40, complete_style="green"),
-                TimeElapsedColumn(),
-                transient=True
-            ) as progress:
-                task = progress.add_task("🪙 Đang nhận xu", total=100)
-                for _ in range(100):
-                    progress.update(task, advance=1)
-                    time.sleep(0.015)
+    nhan = hoanthanh(ads_id, account_id)
+    if nhan.get("status") == 200:
         nhan_tien_progress()
-
-        # In bảng kết quả
+        xu = nhan["data"].get("prices", 0)
+        tong += xu
         dem += 1
-        tien = nhantien["data"].get("prices", 0)
-        tong += tien
-        thoigian = time.strftime("%H:%M:%S", time.localtime())
+        tb = Table(title=f"🍉 JOB #{dem} HOÀN THÀNH", box=box.ROUNDED)
+        tb.add_column("Thời gian", justify="center")
+        tb.add_column("Xu nhận", justify="center")
+        tb.add_column("Tổng xu", justify="center")
+        tb.add_row(time.strftime("%H:%M:%S"), f"+{xu} đ", f"{tong:,} đ")
         os.system('cls' if os.name == 'nt' else 'clear')
-        banner()
-
-        tb = Table(title=f"[bold green]🍉 JOB #{dem} HOÀN THÀNH", show_header=True, header_style="bold cyan", box=box.ROUNDED)
-        tb.add_column("STT", justify="center", style="bold yellow")
-        tb.add_column("⏰ Thời gian", justify="center", style="cyan")
-        tb.add_column("📌 Trạng thái", justify="center", style="green")
-        tb.add_column("💵 Xu nhận", justify="center", style="bold green")
-        tb.add_column("💰 Tổng xu", justify="center", style="bold white")
-        tb.add_row(str(dem), thoigian, "[green]SUCCESS[/green]", f"+{tien} đ", f"{tong:,} đ")
+        print(banner)
         console.print(tb)
-        sleep(1)
     else:
         baoloi(ads_id, object_id, account_id, job_type)
         console.print("[red]❌ Job lỗi, đã báo lỗi và bỏ qua[/red]")
-        sleep(1)
-
+    sleep(1)
