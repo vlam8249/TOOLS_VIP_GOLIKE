@@ -1,400 +1,233 @@
-import json
-import os,time
-import cloudscraper
+import os, sys, socket, time, json
 import requests
-import socket
-import subprocess
-from time import strftime
-from time import sleep
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
-import time
+import cloudscraper
 from colorama import Fore, init
-import sys
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
 
+# Khởi tạo
+init(autoreset=True)
+console = Console()
+scraper = cloudscraper.create_scraper()
+
+# Kiểm tra mạng
 def kiem_tra_mang():
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=3)
     except OSError:
         print("Mạng không ổn định hoặc bị mất kết nối. Vui lòng kiểm tra lại mạng.")
+        sys.exit(1)
 
 kiem_tra_mang()
-scraper = cloudscraper.create_scraper()
 
-from colorama import Fore
-
-banner = f"""
-{Fore.YELLOW}╔════════════════════════════════════════════════════════╗
-{Fore.YELLOW}║                                                        ║
-{Fore.YELLOW}║   \033[38;2;0;120;255m████████╗ ██████╗  ██████╗ ██╗     \033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║   \033[38;2;0;140;255m╚══██╔══╝██╔═══██╗██╔═══██╗██║     \033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║   \033[38;2;0;160;255m   ██║   ██║   ██║██║   ██║██║     \033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║   \033[38;2;0;180;255m   ██║   ██║   ██║██║   ██║██║     \033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║   \033[38;2;0;200;255m   ██║   ╚██████╔╝╚██████╔╝███████╗\033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║   \033[38;2;0;220;255m   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝\033[0m{Fore.YELLOW}║
-{Fore.YELLOW}║                                                        ║
-{Fore.YELLOW}╚════════════════════════════════════════════════════════╝
+# Banner
+banner = f"""{Fore.YELLOW}
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║   \033[38;2;0;120;255m████████╗ ██████╗  ██████╗ ██╗     \033[0m{Fore.YELLOW}║
+║   \033[38;2;0;140;255m╚══██╔══╝██╔═══██╗██╔═══██╗██║     \033[0m{Fore.YELLOW}║
+║   \033[38;2;0;160;255m   ██║   ██║   ██║██║   ██║██║     \033[0m{Fore.YELLOW}║
+║   \033[38;2;0;180;255m   ██║   ██║   ██║██║   ██║██║     \033[0m{Fore.YELLOW}║
+║   \033[38;2;0;200;255m   ██║   ╚██████╔╝╚██████╔╝███████╗\033[0m{Fore.YELLOW}║
+║   \033[38;2;0;220;255m   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝\033[0m{Fore.YELLOW}║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
 {Fore.WHITE}════════════════════════════════════════════════════════════
-{Fore.RED}{Fore.WHITE}Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_TIKTOK_║ ADMIN: \033[38;2;0;220;255mVILÂM
+Phiên Bản: {Fore.YELLOW}TOOL_GOLIKE_TIKTOK_║ ADMIN: \033[38;2;0;220;255mVILÂM
 {Fore.WHITE}════════════════════════════════════════════════════════════
 [{Fore.RED}⚡{Fore.WHITE}] Zalo: \033[38;2;0;220;255m0368782618
-[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: \033[38;2;0;220;255mAE dùng tool bị lỗi thì gọi ADMIN để sửa
+[{Fore.RED}⚡{Fore.WHITE}] Lưu ý: \033[38;2;0;220;255mGọi admin nếu lỗi
 {Fore.WHITE}════════════════════════════════════════════════════════════
- TOOL này có lọc tài khoản riêng tư TIKTOK và có lọc JOB 42vnd
-{Fore.WHITE}════════════════════════════════════════════════════════════
+ TOOL này có lọc tài khoản riêng tư TIKTOK và lọc JOB 42vnd
+════════════════════════════════════════════════════════════
 """
-os.system('cls' if os.name== 'nt' else 'clear')
+os.system('cls' if os.name == 'nt' else 'clear')
 print(banner)
-print("\033[1;35m╔═════════════════════════════════╗")
-print("\033[1;35m║       \033[1;33m  ĐĂNG NHẬP GOLIKE        \033[1;35m║")
-print("\033[1;35m╚═════════════════════════════════╝") 
+
+# Đăng nhập Authorization
 try:
-    with open("Auth.txt", "r") as Auth, open("token.txt", "r") as t:
-        author = Auth.read().strip()
-        token = t.read().strip()
+    with open("Auth.txt", "r") as f1, open("token.txt", "r") as f2:
+        author = f1.read().strip()
+        token = f2.read().strip()
 except:
-    print("\033[1;31m Hãy tạo file Auth.txt và token.txt!\n")
+    print("\033[1;31mChưa có file Auth.txt và token.txt")
     sys.exit(1)
 
+print("Nhập [1] Dùng Authorization/Token hiện tại")
+print("Nhập [2] Nhập mới Authorization/Token")
+chon = input("Nhập lựa chọn (1 hoặc 2): ").strip()
 
-
-print(f"Nhập [1] Sử dụng Authorization và Token hiện tại")
-print(f"Nhập [2] Để Thay Authorization và Token mới")
-select = input(f"Nhập lựa chọn (1 hoặc 2): ").strip()
-
-if select == "1":
-    if not author or not token:
-        print("\033[1;31mCredential files are empty!\n")
-        sys.exit(1)
-    print(f"\033[1;32mSử dụng Authorization và Token hiện tại\n")
-elif select == "2":
+if chon == "2":
     author = input("NHẬP AUTHORIZATION GOLIKE: ").strip()
-    token = input("NHẬP TOKEN (T CỦA GOLIKE): ").strip()
-    try:
-        with open("Auth.txt", "w") as Auth, open("token.txt", "w") as t:
-            Auth.write(author)
-            t.write(token)
-    except:
-        print("\033[1;31m Hãy tạo file Auth.txt và token.txt!\n")
-        sys.exit(1)
-else:
-    print("\033[1;31mLựa chọn không hợp lệ! Vui lòng chọn 1 hoặc 2.")
+    token = input("NHẬP TOKEN GOLIKE: ").strip()
+    with open("Auth.txt", "w") as f1, open("token.txt", "w") as f2:
+        f1.write(author)
+        f2.write(token)
+elif chon != "1":
+    print("Lựa chọn không hợp lệ!")
     sys.exit(1)
 
-os.system('clear')
-print(banner)
-print("      DANH SÁCH ACC TIKTOK               ")
-print(f"{Fore.MAGENTA}===================================")
-
+# Headers cho API
 headers = {
     'Accept': 'application/json, text/plain, */*',
     'Content-Type': 'application/json;charset=utf-8',
     'Authorization': author,
     't': token,
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+    'User-Agent': 'Mozilla/5.0',
     'Referer': 'https://app.golike.net/account/manager/tiktok',
 }
 
-scraper = cloudscraper.create_scraper()
-
+# Lấy danh sách tài khoản
 def chonacc():
-    json_data = {}
     try:
-        response = scraper.get(
-            'https://gateway.golike.net/api/tiktok-account',
-            headers=headers,
-            json=json_data
-        )
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, dict) or 'status' not in data:
-            print(f"\033[1;31mInvalid account response: {data}")
-            sys.exit(1)
-        return data
-    except requests.exceptions.RequestException as e:
-        print(f"\033[1;31mError fetching accounts: {e}")
-        sys.exit(1)
-
-def nhannv(account_id):
-    try:
-        params = {
-            'account_id': account_id,
-            'data': 'null',
-        }
-        response = scraper.get(
-            'https://gateway.golike.net/api/advertising/publishers/tiktok/jobs',
-            headers=headers,
-            params=params,
-            json={}
-        )
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, dict) or 'status' not in data:
-            print(f"\033[1;31mInvalid job response: {data}\n")
-            return None
-        return data
-    except requests.exceptions.RequestException as e:
+        res = scraper.get('https://gateway.golike.net/api/tiktok-account', headers=headers)
+        data = res.json()
+        return data if data.get("status") == 200 else None
+    except:
         return None
 
-def hoanthanh(ads_id, account_id):
+accounts = chonacc()
+if not accounts:
+    print("Không lấy được tài khoản TikTok. Kiểm tra Auth hoặc T")
+    sys.exit(1)
+
+for i, acc in enumerate(accounts["data"], 1):
+    print(f"{Fore.CYAN}[{i}] {Fore.YELLOW}{acc['nickname']}")
+
+while True:
     try:
-        json_data = {
-            'ads_id': ads_id,
-            'account_id': account_id,
-            'async': True,
-            'data': None,
-        }
-        response = scraper.post(
-            'https://gateway.golike.net/api/advertising/publishers/tiktok/complete-jobs',
-            headers=headers,
-            json=json_data,
-            timeout=20
-        )
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, dict) or 'status' not in data:
-            print(f"\033[1;31mInvalid complete job response: {data}")
-            return None
-        if data.get("status") != 200 and "already" in data.get("message", "").lower():
-            return {"status": "already_completed", "message": data.get("message", "")}
-        return data
-    except requests.exceptions.HTTPError as e:
-        return None
-    except requests.exceptions.RequestException as e:
-        return None
-    except ValueError as e:
-        return None
+        index = int(input("Chọn tài khoản TikTok muốn chạy: ")) - 1
+        acc = accounts["data"][index]
+        break
+    except:
+        print("Sai định dạng hoặc số không hợp lệ!")
 
-def baoloi(ads_id, object_id, account_id, loai):
+account_id = acc["id"]
+nickname = acc["nickname"]
+
+# Nhập delay và số lần đổi acc
+while True:
     try:
-        json_data1 = {
-            'description': 'Tôi đã làm Job này rồi',
-            'users_advertising_id': ads_id,
-            'type': 'ads',
-            'provider': 'tiktok',
-            'fb_id': account_id,
-            'error_type': 6,
-        }
-        scraper.post('https://gateway.golike.net/api/report/send', headers=headers, json=json_data1)
-        json_data2 = {
-            'ads_id': ads_id,
-            'object_id': object_id,
-            'account_id': account_id,
-            'type': loai,
-        }
-        scraper.post(
-            'https://gateway.golike.net/api/advertising/publishers/tiktok/skip-jobs',
-            headers=headers,
-            json=json_data2,
-        )
-    except Exception:
-        pass
+        delay = int(input("Delay mỗi job (giây): "))
+        if delay >= 0: break
+    except: pass
+    print("Sai định dạng!")
 
-def open_tiktok_link(link):
+while True:
     try:
-        os.system(f"termux-open-url '{link}'")
-        time.sleep(2)
-    except Exception:
-        try:
-            webbrowser.open(link)
-            time.sleep(2)
-        except Exception as e:
-            print(f"\033[1;31mKhông mở được link tự động: {e}")
-            print(f"\033[1;33mVui lòng mở link : {link}")
+        doi_acc = int(input("Số lần fail thì đổi acc: "))
+        if doi_acc > 0: break
+    except: pass
+    print("Sai định dạng!")
 
-def countdown_delay(seconds, nickname, price_str, job_count, total, link, status):
-    for i in range(seconds, -1, -1):
-        display_dashboard(nickname, price_str, job_count, total, link, status, f"{i}...")
-        time.sleep(1)
-    display_dashboard(nickname, price_str, job_count, total, link, status, "")    
-def display_dashboard(nickname, price_str, job_count, total, link, status, delay_str):
-    os.system('cls' if os.name=='nt' else 'clear')
-    
-    table = Table(title="📋 THÔNG TIN JOB GOLIKE", box=box.ROUNDED, border_style="bold white")
-    table.add_column("📌 Mục", justify="right", style="bold cyan")
-    table.add_column("📤 Thông tin", justify="left", style="bold magenta")
-
-    table.add_row("👤 Nick TikTok", nickname)
-    table.add_row("💰 Giá", price_str)
-    table.add_row("✅ Job thành công", str(job_count))
+# Dashboard
+def display_dashboard(nick, price, done, total, link, status, delay_str):
+    os.system('cls' if os.name == 'nt' else 'clear')
+    table = Table(title="📋 THÔNG TIN JOB GOLIKE", box=box.ROUNDED, border_style="white")
+    table.add_column("📌 Mục", style="bold cyan")
+    table.add_column("📤 Thông tin", style="bold magenta")
+    table.add_row("👤 Nick TikTok", nick)
+    table.add_row("💰 Giá", price)
+    table.add_row("✅ Job thành công", str(done))
     table.add_row("💵 Tổng tiền", str(total))
     table.add_row("🔗 Link job", link)
     table.add_row("📡 Trạng thái", status)
     table.add_row("⏳ Delay", delay_str)
-   
     console.print(table)
-    console.print(Panel.fit(" 🔥 [bold green]Chúc bạn cày GoLike vui vẻ 😚[bold green]", border_style="green"))
- 
-chontktiktok = chonacc()
+    console.print(Panel.fit("🔥 [bold green]Chúc bạn cày GoLike vui vẻ 😚", border_style="green"))
 
-def dsacc():
-    if chontktiktok.get("status") != 200:
-        print("\033[1;31m Authorization hoặc T sai\n")
-        sys.exit(1)
-    for i in range(len(chontktiktok["data"])):
-        print(f"\033[1;36m[{i+1}]\033[1;93m {chontktiktok['data'][i]['nickname']}")
+# Countdown
+def countdown(seconds, *args):
+    for i in range(seconds, -1, -1):
+        display_dashboard(*args, f"{i} giây")
+        time.sleep(1)
 
-dsacc()
-print(f"{Fore.MAGENTA}===================================")
-
-while True:
+# Mở link TikTok
+def open_link(link):
     try:
-        luachon = int(input("\033[1;31mChọn tài khoản TIKTOK bạn muốn chạy : \033[1;33m"))
-        if 1 <= luachon <= len(chontktiktok["data"]):
-            account_id = chontktiktok["data"][luachon - 1]["id"]
-            account_nickname = chontktiktok["data"][luachon - 1]["nickname"]
-            break
-        print("\033[1;31mAcc không có trong danh sách. Nhập lại!")
-    except:
-        print("\033[1;31mSai Định Dạng")
-
-while True:
-    try:
-        delay = int(input(f"\033[1;32mDelay thực hiện job : \033[1;33m"))
-        if delay >= 0:
-            break
-        print("\033[1;31mDelay phải là số không âm!")
-    except:
-        print("\033[1;31mSai Định Dạng")
-
-while True:
-    try:
-        doiacc = int(input(f"\033[1;32mThất bại bao nhiêu lần thì đổi acc tiktok : \033[1;33m"))
-        if doiacc > 0:
-            break
-        print("\033[1;31mSố lần thất bại phải lớn hơn 0!")
-    except:
-        print("\033[1;31m Nhập Sai \n")
-
-dem = 0
-tong = 0
-checkdoiacc = 0
-current_link = "N/A"
-price_display = "Chưa check"
-current_status = "Khởi động"
-
-os.system('clear')
-
-while True:
-    if checkdoiacc >= doiacc:
-        current_status = "Đổi acc TikTok"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        print(f" {account_nickname} gặp vấn đề ({checkdoiacc} lần thất bại) ")
-        dsacc()
-        while True:
-            try:
-                print(f"{Fore.WHITE}====================================")
-                luachon = int(input("\033[1;32m Chọn tài khoản mới đê : \033[1;33m"))
-                if 1 <= luachon <= len(chontktiktok["data"]):
-                    account_id = chontktiktok["data"][luachon - 1]["id"]
-                    account_nickname = chontktiktok["data"][luachon - 1]["nickname"]
-                    checkdoiacc = 0
-                    current_status = "Khởi động"
-                    display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-                    break
-                print("\033[1;31mAcc không hợp lệ. Nhập lại!\n")
-            except:
-                print("\033[1;31mSai định dạng\n")
-
-    max_retries = 3
-    retry_count = 0
-    nhanjob = None
-    current_status = "Lấy job"
-    display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-
-    while retry_count < max_retries:
-        nhanjob = nhannv(account_id)
-        if nhanjob and nhanjob.get("status") == 200 and nhanjob["data"].get("link") and nhanjob["data"].get("object_id"):
-            break
-        retry_count += 1
+        if "android" in sys.platform.lower():
+            os.system(f"termux-open-url '{link}'")
+        else:
+            import webbrowser
+            webbrowser.open(link)
         time.sleep(2)
+    except:
+        print("Không mở được link. Vui lòng mở thủ công:", link)
 
-    if not nhanjob or retry_count >= max_retries:
-        current_status = "Không lấy được job"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        time.sleep(1)
-        checkdoiacc += 1
+# Gọi API nhận job
+def get_job(account_id):
+    try:
+        res = scraper.get("https://gateway.golike.net/api/advertising/publishers/tiktok/jobs",
+                          headers=headers,
+                          params={"account_id": account_id})
+        return res.json()
+    except:
+        return None
+
+# Gọi API hoàn thành job
+def complete_job(ads_id, account_id):
+    try:
+        res = scraper.post("https://gateway.golike.net/api/advertising/publishers/tiktok/complete-jobs",
+                           headers=headers,
+                           json={"ads_id": ads_id, "account_id": account_id, "async": True})
+        return res.json()
+    except:
+        return None
+
+# Gọi API báo lỗi job
+def skip_job(ads_id, object_id, account_id, job_type):
+    try:
+        scraper.post("https://gateway.golike.net/api/report/send",
+                     headers=headers,
+                     json={"description": "Tôi đã làm job rồi", "users_advertising_id": ads_id,
+                           "type": "ads", "provider": "tiktok", "fb_id": account_id, "error_type": 6})
+        scraper.post("https://gateway.golike.net/api/advertising/publishers/tiktok/skip-jobs",
+                     headers=headers,
+                     json={"ads_id": ads_id, "object_id": object_id,
+                           "account_id": account_id, "type": job_type})
+    except:
+        pass
+
+# MAIN LOOP
+dem, tong, fail = 0, 0, 0
+current_status = "Khởi động"
+while True:
+    job = get_job(account_id)
+    if not job or job.get("status") != 200 or not job["data"].get("link"):
+        current_status = "Không có job"
+        fail += 1
+        display_dashboard(nickname, "N/A", dem, tong, "N/A", current_status, "")
+        time.sleep(2)
+        if fail >= doi_acc:
+            print("Đổi tài khoản do lỗi nhiều.")
+            sys.exit(0)
         continue
 
-    ads_id = nhanjob["data"]["id"]
-    current_link = nhanjob["data"]["link"]
-    object_id = nhanjob["data"]["object_id"]
-    job_type = nhanjob["data"]["type"]
-
-    time.sleep(3)  
-# 3 giây check giá
-    if "price_per_after_cost" not in nhanjob["data"]:
-        price_display = "Không có giá"
-        current_status = "Bỏ qua job"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        baoloi(ads_id, object_id, account_id, job_type)
-        time.sleep(1)
-        current_link = "N/A"
+    data = job["data"]
+    if data.get("price_per_after_cost") != 42 or data.get("type") != "follow":
+        skip_job(data["id"], data["object_id"], account_id, data["type"])
         continue
 
-    job_price = nhanjob["data"]["price_per_after_cost"]
-    price_color = "\033[1;38m" if job_price == 42 else "\033[1;38m"
-    price_symbol = "=" if job_price == 42 else "≠"
-    price_display = f"{job_price} {price_color}{price_symbol}\033[1;38m 42   "
-    display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-    if job_price != 42:
-        current_status = "Bỏ qua job"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        baoloi(ads_id, object_id, account_id, job_type)
-        time.sleep(1)
-        current_link = "N/A"
-        price_display = "Chưa check"
-        continue
-
-    if job_type != "follow":
-        current_status = "Bỏ qua job"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        baoloi(ads_id, object_id, account_id, job_type)
-        time.sleep(1)
-        current_link = "N/A"
-        price_display = "Chưa check"
-        continue
-
+    link = data["link"]
+    ads_id = data["id"]
+    object_id = data["object_id"]
+    price_str = "42 vnd"
     current_status = "Làm job"
-    display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-    open_tiktok_link(current_link)
-    countdown_delay(delay, account_nickname, price_display, dem, tong, current_link, current_status)
+    display_dashboard(nickname, price_str, dem, tong, link, current_status, "")
+    open_link(link)
+    countdown(delay, nickname, price_str, dem, tong, link, current_status)
 
-    current_status = "Nhận tiền"
-    display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-    time.sleep(0.5)
-#nhận 5 lần ko dc bỏ job
-    max_attempts = 5
-    attempts = 0
-    nhantien = None
-    while attempts < max_attempts:
-        nhantien = hoanthanh(ads_id, account_id)
-        if nhantien and (nhantien.get("status") == 200 or nhantien.get("status") == "already_completed"):
-            break
-        attempts += 1
-        time.sleep(1)
-
-    if nhantien and nhantien.get("status") == 200:
+    result = complete_job(ads_id, account_id)
+    if result and result.get("status") == 200:
         dem += 1
-        tien = nhantien["data"].get("price_per_after_cost", job_price)
-        if tien == 0:
-            print(f"\033[1;31m Lỗi nhận tiền\n")
-        tong += tien
-        current_status = "Thành Công"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        time.sleep(0.7)
-        checkdoiacc = 0
-    elif nhantien and nhantien.get("status") == "already_completed":
-        current_status = "Bỏ qua job trùng"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        baoloi(ads_id, object_id, account_id, job_type)
-        time.sleep(1)
+        tong += 42
+        current_status = "Thành công"
+        display_dashboard(nickname, price_str, dem, tong, link, current_status, "")
     else:
-        current_status = "Nhận tiền thất bại"
-        display_dashboard(account_nickname, price_display, dem, tong, current_link, current_status, "")
-        baoloi(ads_id, object_id, account_id, job_type)
-        time.sleep(1)
-        checkdoiacc += 1
-
-    current_link = "N/A"
-    price_display = "Chưa check"
+        skip_job(ads_id, object_id, account_id, data["type"])
+        current_status = "Thất bại"
+        fail += 1
+        display_dashboard(nickname, price_str, dem, tong, link, current_status, "")
+    time.sleep(2)
