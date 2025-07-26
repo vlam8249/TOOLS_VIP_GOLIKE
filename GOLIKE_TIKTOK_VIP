@@ -199,7 +199,7 @@ def display_dashboard(nickname, price_str, job_count, total, link, status, delay
     table.add_row("⏳ Delay", delay_str)
 
     console.print(table)
-    console.print(Panel.fit("🌟 [bold green]Chúc bạn bào GoLike thật nhiều job [bold green]", border_style="green"))
+    console.print(Panel.fit("🌟 [bold green]Chúc bạn bào GoLike vắt cực khô 😆[bold green]", border_style="green"))
 
 
 chontktiktok = chonacc()
