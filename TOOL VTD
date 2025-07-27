@@ -1,0 +1,751 @@
+import json
+
+import os
+
+import random
+
+import time
+
+from colorama import Fore, Style, init
+
+import pyfiglet
+
+import requests
+
+from requests.adapters import HTTPAdapter
+
+from urllib3.util.retry import Retry
+
+
+
+init()
+
+
+
+def clear_screen():
+
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+
+def print_colored_ascii_art(text):
+
+    ascii_art = pyfiglet.figlet_format(text, font="slant")
+
+    lines = ascii_art.splitlines()
+
+    colors = [Fore.CYAN, Fore.MAGENTA, Fore.YELLOW, Fore.GREEN, Fore.BLUE]
+
+    for i, line in enumerate(lines):
+
+        print(colors[i % len(colors)] + line + Style.RESET_ALL)
+
+
+
+# Hiển thị trạng thái cược của các nhân vật
+
+def display_bet_status():
+
+    print(Fore.CYAN + "\n=== Trạng thái cược hiện tại ===" + Style.RESET_ALL)
+
+    for athlete_id, bet in bets.items():
+
+        status = "Đang cược" if bet["active"] else f"Đang dừng ({bet['stop_counter']} phiên còn lại)"
+
+        print(Fore.LIGHTYELLOW_EX + f"{titles[athlete_id]}: {status}, Số tiền cược: {bet['amount']} BUILD, Loại cược: {bet['bet_group']}" + Style.RESET_ALL)
+
+    print(Fore.CYAN + "==============================" + Style.RESET_ALL)
+
+
+
+# Danh sách các danh hiệu
+
+titles = {
+
+    1: "Bậc Thầy Tấn Công",
+
+    2: "Quyền Sắt",
+
+    3: "Thợ Lặn Sâu",
+
+    4: "Cơn Lốc Sân Cỏ",
+
+    5: "Hiệp Sĩ Phi Nhanh",
+
+    6: "Vua Home Rune"
+
+}
+
+
+
+# Nhập thông tin người dùng
+
+clear_screen()
+
+print_colored_ascii_art("TOOL-SANGDZ")
+
+print(Fore.CYAN + "Phiên bản thử nghiệm - Công cụ cược tự động" + Style.RESET_ALL)
+
+user_id = input(Fore.CYAN + "Nhập user_id: ")
+
+user_login = "login_v2"
+
+user_secret_key = input(Fore.CYAN + "Nhập user_secret_key: ")
+
+
+
+# Nhập các thông số cược
+
+initial_bet_amount = int(input(Fore.CYAN + "Nhập số tiền cược ban đầu: "))
+
+bet_increase_rate = float(input(Fore.CYAN + "Nhập tỷ lệ tăng cược khi thua (ví dụ: 2.0, 10.0): "))
+
+loss_threshold = int(input(Fore.CYAN + "Nhập số ván thua để tăng cược: "))
+
+stop_after_win = int(input(Fore.CYAN + "Nhập số phiên dừng cược sau thắng (0 để không dừng): "))
+
+profit_stop = int(input(Fore.CYAN + "Nhập mức lãi dừng cược (BUILD): "))
+
+loss_stop = int(input(Fore.CYAN + "Nhập mức lỗ dừng cược (BUILD): "))
+
+
+
+# Chọn kiểu reset
+
+print(Fore.CYAN + "\nChọn kiểu reset:" + Style.RESET_ALL)
+
+print("1. Reset lẻ (reset tiền cược của người thắng)")
+
+print("2. Reset all (dừng hoặc reset tất cả)")
+
+reset_mode = int(input(Fore.LIGHTYELLOW_EX + "Nhập lựa chọn (1/2): "))
+
+if reset_mode == 2:
+
+    print(Fore.CYAN + "\nChọn logic reset all:" + Style.RESET_ALL)
+
+    print("1. Stop all (dừng tất cả khi một người thắng)")
+
+    print("2. Stop lẻ (dừng người thắng, tiếp tục người thua)")
+
+    reset_all_logic = int(input(Fore.LIGHTYELLOW_EX + "Nhập lựa chọn (1/2): "))
+
+else:
+
+    reset_all_logic = None
+
+
+
+# Chọn logic dừng cược
+
+print(Fore.CYAN + "\nChọn logic dừng cược:" + Style.RESET_ALL)
+
+print("1. Có logic (reset phiên đợi nếu gặp người đang cược)")
+
+print("2. Không logic (dừng bình thường)")
+
+stop_logic = int(input(Fore.LIGHTYELLOW_EX + "Nhập lựa chọn (1/2): "))
+
+
+
+# Chọn người cược và kiểu cược
+
+bets = {}
+
+print(Fore.CYAN + "\nChọn người để cược (nhập 0 để kết thúc):" + Style.RESET_ALL)
+
+for idx, (id, title) in enumerate(titles.items(), 1):
+
+    print(f"{idx}. {title}")
+
+print(f"{len(titles) + 1}. Tất cả")
+
+while True:
+
+    choice = int(input(Fore.LIGHTYELLOW_EX + f"Chọn số thứ tự (1-{len(titles) + 1}, 0 để kết thúc): "))
+
+    if choice == 0:
+
+        break
+
+    if choice == len(titles) + 1:  # Chọn tất cả
+
+        bet_type = int(input(Fore.LIGHTYELLOW_EX + "Cược cho tất cả nhân vật (1: Winner, 2: Not Winner): "))
+
+        bet_group = "winner" if bet_type == 1 else "not_winner"
+
+        for athlete_id in titles.keys():
+
+            bets[athlete_id] = {
+
+                "bet_group": bet_group,
+
+                "amount": initial_bet_amount,
+
+                "losses": 0,
+
+                "stop_counter": 0,
+
+                "active": True,
+
+                "last_bet_success": False
+
+            }
+
+        print(Fore.LIGHTGREEN_EX + f"Đã chọn cược {bet_group} cho tất cả nhân vật" + Style.RESET_ALL)
+
+        break
+
+    if 1 <= choice <= len(titles):
+
+        athlete_id = list(titles.keys())[choice - 1]
+
+        bet_type = int(input(Fore.YELLOW + f"Cược cho {titles[athlete_id]} (1: Winner, 2: Not Winner): "))
+
+        bet_group = "winner" if bet_type == 1 else "not_winner"
+
+        bets[athlete_id] = {
+
+            "bet_group": bet_group,
+
+            "amount": initial_bet_amount,
+
+            "losses": 0,
+
+            "stop_counter": 0,
+
+            "active": True,
+
+            "last_bet_success": False
+
+        }
+
+    else:
+
+        print(Fore.RED + "Lựa chọn không hợp lệ!" + Style.RESET_ALL)
+
+
+
+headers = {
+
+    "user-id": user_id,
+
+    "user-login": user_login,
+
+    "user-secret-key": user_secret_key
+
+}
+
+
+
+# Tạo session với cơ chế retry
+
+session = requests.Session()
+
+retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
+
+session.mount("https://", HTTPAdapter(max_retries=retries))
+
+
+
+so_du_ban_dau = None
+
+current_balance = None
+
+top_champions = []
+
+expire_seconds = None
+
+first_round = True
+
+chuoi_thang = 0
+
+
+
+def login():
+
+    global so_du_ban_dau, current_balance
+
+    try:
+
+        current_time = int(time.time() * 1000)
+
+        url_login = f"https://user.3games.io/user/regist?is_cwallet=1&is_mission_setting=true&version=&time={current_time}"
+
+        response = session.get(url_login, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+
+            data = response.json()
+
+            if data.get("code") == 200:
+
+                username = data["data"]["username"]
+
+                ctoken_contribute = data["data"]["cwallet"]["ctoken_contribute"]
+
+                token_contribute_rounded = round(ctoken_contribute)
+
+                so_du_ban_dau = token_contribute_rounded
+
+                current_balance = token_contribute_rounded
+
+                print(Fore.CYAN + f"Username: {username}")
+
+                print(Fore.CYAN + f"Số Dư Ban Đầu: {token_contribute_rounded} BUILD" + Style.RESET_ALL)
+
+            else:
+
+                print(Fore.RED + "Đăng nhập không thành công" + Style.RESET_ALL)
+
+                return False
+
+        else:
+
+            print(Fore.RED + f"Lỗi mạng: {response.status_code}" + Style.RESET_ALL)
+
+            return False
+
+    except requests.RequestException as e:
+
+        print(Fore.RED + f"Lỗi không xác định: {e}" + Style.RESET_ALL)
+
+        return False
+
+    return True
+
+
+
+def lich_su():
+
+    global expire_seconds, first_round
+
+    url_main = "https://api.sprintrun.win/sprint/home?asset=BUILD"
+
+    try:
+
+        response = session.get(url_main, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+
+            data = response.json()
+
+            if data.get("code") == 0:
+
+                expire_seconds = data["data"].get("expire_seconds", 0)
+
+                issue_id = data["data"].get("issue_id")
+
+                print(Fore.CYAN + f"👾Vòng chơi hiện tại: #{issue_id}")
+
+                print(Fore.CYAN + f"Kết quả có sau: {expire_seconds} giây" + Style.RESET_ALL)
+
+                display_bet_status()
+
+                if first_round:
+
+                    print(Fore.LIGHTYELLOW_EX + "Đang đợi phiên đầu tiên trước khi bắt đầu cược..." + Style.RESET_ALL)
+
+                    first_round = False
+
+                    for athlete_id, bet in bets.items():
+
+                        if bet["active"]:
+
+                            success = dat_cuoc(athlete_id, issue_id, bet["bet_group"], bet["amount"])
+
+                            bet["last_bet_success"] = success
+
+                            if not success:
+
+                                print(Fore.LIGHTYELLOW_EX + f"Bỏ qua đặt cược cho {titles[athlete_id]} do lỗi ở vòng #{issue_id}, sẽ thử lại ở vòng tiếp theo" + Style.RESET_ALL)
+
+                else:
+
+                    check_results(issue_id)
+
+                    for athlete_id, bet in bets.items():
+
+                        if bet["active"]:
+
+                            success = dat_cuoc(athlete_id, issue_id, bet["bet_group"], bet["amount"])
+
+                            bet["last_bet_success"] = success
+
+                            if not success:
+
+                                print(Fore.LIGHTYELLOW_EX + f"Bỏ qua đặt cược cho {titles[athlete_id]} do lỗi ở vòng #{issue_id}, sẽ thử lại ở vòng tiếp theo" + Style.RESET_ALL)
+
+            else:
+
+                print(Fore.RED + "Lỗi API response" + Style.RESET_ALL)
+
+        else:
+
+            print(Fore.RED + f"HTTP Error: {response.status_code}" + Style.RESET_ALL)
+
+    except requests.RequestException as e:
+
+        print(Fore.RED + f"Lỗi kết nối khi lấy dữ liệu phiên: {e}" + Style.RESET_ALL)
+
+
+
+def check_results(issue_id):
+
+    global top_champions, current_balance
+
+    url_lich_su = f"https://api.sprintrun.win/sprint/issue_result?issue={issue_id-1}&asset=BUILD"
+
+    max_retries = 10
+
+    retry_delay = 2
+
+    for attempt in range(max_retries):
+
+        try:
+
+            response_lich_su = session.get(url_lich_su, headers=headers, timeout=10)
+
+            if response_lich_su.status_code == 200:
+
+                data = response_lich_su.json()
+
+                if data.get("code") == 0:
+
+                    athlete_rank = data["data"].get("athlete_rank", [])
+
+                    if athlete_rank:
+
+                        id_nha_vo_dich = athlete_rank[0]
+
+                        nha_vo_dich = titles.get(id_nha_vo_dich, "Không xác định")
+
+                        print(Fore.CYAN + f"Nhà vô địch vòng trước: {nha_vo_dich}" + Style.RESET_ALL)
+
+                        top_champions.insert(0, nha_vo_dich)
+
+                        if len(top_champions) > 3:
+
+                            top_champions.pop()
+
+                        process_bets(id_nha_vo_dich, issue_id)
+
+                        update_balance()
+
+                        print(Fore.CYAN + f"💸Số dư hiện tại: {current_balance} BUILD" + Style.RESET_ALL)
+
+                        print("---------------------------------------------")
+
+                        return
+
+                    else:
+
+                        print(Fore.LIGHTYELLOW_EX + f"Chưa có kết quả cho vòng #{issue_id-1} (lần thử {attempt+1}/{max_retries})" + Style.RESET_ALL)
+
+                else:
+
+                    print(Fore.RED + f"Lỗi dữ liệu từ API cho vòng #{issue_id-1}: {data.get('message', 'Không rõ')}" + Style.RESET_ALL)
+
+            else:
+
+                print(Fore.RED + f"HTTP Error cho vòng #{issue_id-1}: {response_lich_su.status_code}" + Style.RESET_ALL)
+
+        except requests.RequestException as e:
+
+            print(Fore.RED + f"Lỗi kết nối khi kiểm tra kết quả vòng #{issue_id-1}: {e}" + Style.RESET_ALL)
+
+        if attempt < max_retries - 1:
+
+            time.sleep(retry_delay)
+
+    print(Fore.RED + f"Bỏ qua xử lý thắng/thua cho vòng #{issue_id-1} do không lấy được kết quả sau {max_retries} lần thử" + Style.RESET_ALL)
+
+    for athlete_id, bet in bets.items():
+
+        if not bet["active"] and bet["stop_counter"] > 0:
+
+            bet["stop_counter"] -= 1
+
+            if bet["stop_counter"] <= 0:
+
+                bet["active"] = True
+
+                print(Fore.LIGHTYELLOW_EX + f"{titles[athlete_id]} sẵn sàng cược lại ở vòng tiếp theo" + Style.RESET_ALL)
+
+    update_balance()
+
+    print(Fore.CYAN + f"💸Số dư hiện tại: {current_balance} BUILD" + Style.RESET_ALL)
+
+    print("---------------------------------------------")
+
+
+
+def process_bets(winner_id, issue_id):
+
+    global bets, chuoi_thang, current_balance
+
+    winner_name = titles.get(winner_id, "Không xác định")
+
+    any_winner = False
+
+    for athlete_id, bet in bets.items():
+
+        if not bet["active"]:
+
+            if stop_logic == 1 and bet["stop_counter"] > 0:
+
+                for other_id, other_bet in bets.items():
+
+                    if other_bet["active"] and titles[athlete_id] in top_champions:
+
+                        bet["stop_counter"] = stop_after_win
+
+                        print(Fore.LIGHTYELLOW_EX + f"Reset thời gian dừng cho {titles[athlete_id]}" + Style.RESET_ALL)
+
+            bet["stop_counter"] -= 1
+
+            if bet["stop_counter"] <= 0:
+
+                bet["active"] = True
+
+            continue
+
+        if bet["last_bet_success"]:
+
+            is_win = (bet["bet_group"] == "winner" and athlete_id == winner_id) or \
+
+                     (bet["bet_group"] == "not_winner" and athlete_id != winner_id)
+
+            if is_win:
+
+                payout_ratio = 5.0 if bet["bet_group"] == "winner" else 1.15
+
+                winnings = bet["amount"] * payout_ratio
+
+                profit = winnings - bet["amount"]
+
+                current_balance += winnings
+
+                print(Fore.LIGHTGREEN_EX + f"✅Thắng cược cho {titles[athlete_id]}: +{profit:.2f} BUILD (Tỷ lệ: x{payout_ratio})" + Style.RESET_ALL)
+
+                chuoi_thang += 1
+
+                any_winner = True
+
+                if reset_mode == 1:
+
+                    bet["amount"] = initial_bet_amount
+
+                    bet["losses"] = 0
+
+                    bet["active"] = False if stop_after_win > 0 else True
+
+                    bet["stop_counter"] = stop_after_win
+
+                    print(Fore.LIGHTYELLOW_EX + f"Reset cược và dừng {stop_after_win} phiên cho {titles[athlete_id]}" + Style.RESET_ALL)
+
+            else:
+
+                print(Fore.RED + f"❌Thua cược cho {titles[athlete_id]}: -{bet['amount']} BUILD" + Style.RESET_ALL)
+
+                bet["losses"] += 1
+
+                current_balance -= bet["amount"]
+
+                if bet["losses"] >= loss_threshold:
+
+                    bet["amount"] = int(bet["amount"] * bet_increase_rate)
+
+                    bet["losses"] = 0
+
+                    print(Fore.LIGHTYELLOW_EX + f"💰Tăng cược cho {titles[athlete_id]} lên {bet['amount']} BUILD" + Style.RESET_ALL)
+
+        else:
+
+            print(Fore.LIGHTYELLOW_EX + f"Không tính thắng/thua cho {titles[athlete_id]} vì cược không thành công ở vòng trước" + Style.RESET_ALL)
+
+    if any_winner and reset_mode == 2:
+
+        if reset_all_logic == 1:
+
+            for bet in bets.values():
+
+                bet["active"] = False
+
+                bet["stop_counter"] = stop_after_win
+
+            print(Fore.LIGHTYELLOW_EX + f"Dừng tất cả cược trong {stop_after_win} phiên!" + Style.RESET_ALL)
+
+        else:
+
+            for athlete_id, bet in bets.items():
+
+                bet["amount"] = initial_bet_amount
+
+                bet["losses"] = 0
+
+                bet["active"] = False if stop_after_win > 0 else True
+
+                bet["stop_counter"] = stop_after_win
+
+                print(Fore.LIGHTYELLOW_EX + f"Dừng cược cho {titles[athlete_id]} trong {stop_after_win} phiên" + Style.RESET_ALL)
+
+    print(Fore.LIGHTMAGENTA_EX + f"🏆Chuỗi cược: {chuoi_thang} ván" + Style.RESET_ALL)
+
+
+
+def dat_cuoc(athlete_id, issue_id, bet_group, amount):
+
+    if current_balance is None:
+
+        print(Fore.RED + f"❌ Đặt cược thất bại cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id}: Số dư chưa được cập nhật" + Style.RESET_ALL)
+
+        return False
+
+    if current_balance < amount:
+
+        print(Fore.RED + f"❌ Đặt cược thất bại cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id}: Số dư không đủ ({current_balance} BUILD < {amount} BUILD). Dừng cược!" + Style.RESET_ALL)
+
+        bets[athlete_id]["active"] = False
+
+        bets[athlete_id]["stop_counter"] = 0
+
+        return False
+
+    payload = {
+
+        "asset_type": "BUILD",
+
+        "athlete_id": athlete_id,
+
+        "bet_amount": amount,
+
+        "bet_group": bet_group,
+
+        "issue_id": issue_id
+
+    }
+
+    max_retries = 2
+
+    retry_delay = 1
+
+    for attempt in range(max_retries):
+
+        try:
+
+            response = session.post("https://api.sprintrun.win/sprint/bet", json=payload, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+
+                try:
+
+                    data = response.json()
+
+                    if data.get("code") == 0:
+
+                        print(Fore.LIGHTGREEN_EX + f"🎲 Đặt cược thành công {amount} BUILD cho {titles[athlete_id]} ({bet_group}) - Vòng #{issue_id}" + Style.RESET_ALL)
+
+                        return True
+
+                    else:
+
+                        error_message = data.get("message", "Lỗi không xác định từ API")
+
+                        print(Fore.RED + f"❌ Đặt cược thất bại cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id}: {error_message}" + Style.RESET_ALL)
+
+                        return False
+
+                except ValueError:
+
+                    print(Fore.RED + f"❌ Đặt cược thất bại cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id}: Phản hồi API không phải JSON hợp lệ" + Style.RESET_ALL)
+
+                    return False
+
+            else:
+
+                print(Fore.RED + f"❌ Đặt cược thất bại cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id}: Lỗi mạng (HTTP {response.status_code})" + Style.RESET_ALL)
+
+                return False
+
+        except requests.RequestException as e:
+
+            print(Fore.RED + f"❌ Lỗi kết nối khi đặt cược cho {titles[athlete_id]} ({bet_group}) - 👾Vòng #{issue_id} (lần thử {attempt+1}/{max_retries}): {str(e)}" + Style.RESET_ALL)
+
+            if attempt < max_retries - 1:
+
+                time.sleep(retry_delay)
+
+    print(Fore.LIGHTYELLOW_EX + f"Bỏ qua đặt cược cho {titles[athlete_id]} ở 👾vòng #{issue_id} sau {max_retries} lần thử, sẽ thử lại ở vòng tiếp theo" + Style.RESET_ALL)
+
+    return False
+
+
+
+def update_balance():
+
+    global current_balance
+
+    try:
+
+        current_time = int(time.time() * 1000)
+
+        url_login = f"https://user.3games.io/user/regist?is_cwallet=1&is_mission_setting=true&version=&time={current_time}"
+
+        response = session.get(url_login, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+
+            data = response.json()
+
+            if data.get("code") == 200:
+
+                ctoken_contribute = data["data"]["cwallet"]["ctoken_contribute"]
+
+                api_balance = round(ctoken_contribute)
+
+                current_balance = api_balance
+
+                loi_lo = current_balance - so_du_ban_dau
+
+                if loi_lo >= 0:
+
+                    print(Fore.LIGHTGREEN_EX + f"📈Đang lời: {loi_lo} BUILD" + Style.RESET_ALL)
+
+                else:
+
+                    print(Fore.RED + f"📉Đang lỗ: {loi_lo} BUILD" + Style.RESET_ALL)
+
+                if loi_lo >= profit_stop or loi_lo <= -loss_stop:
+
+                    print(Fore.RED + "Đạt ngưỡng lãi/lỗ. Dừng chương trình!" + Style.RESET_ALL)
+
+                    exit()
+
+            else:
+
+                print(Fore.RED + "Lỗi mạng khi cập nhật số dư" + Style.RESET_ALL)
+
+        else:
+
+            print(Fore.RED + f"Lỗi mạng khi cập nhật số dư: HTTP {response.status_code}" + Style.RESET_ALL)
+
+    except requests.RequestException as e:
+
+        print(Fore.RED + f"Lỗi không xác định khi cập nhật số dư: {e}" + Style.RESET_ALL)
+
+
+
+if __name__ == "__main__":
+
+    clear_screen()
+
+    print_colored_ascii_art("HALOTOOL")
+
+    if login():
+
+        while True:
+
+            lich_su()
+
+            time.sleep(max(expire_seconds, 5) + 7)
